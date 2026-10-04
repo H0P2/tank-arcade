@@ -259,7 +259,7 @@ tr:hover td{background:#141a10}
 
   <div class="combat-controls"><div><span class="key">W A S D</span> 이동 <span class="key">SPACE</span> 발사 <span class="key">P</span> 일시정지</div><button class="btn" id="fireButton">발사 ↗</button><span id="fireStatus">발사 입력 0 · 발사 0 · 대기 0</span></div><div class="game-help">
     <div><b>SURVIVAL</b> 30초 생존 · <b>DUEL</b> 적 탱크 HP 0</div>
-    <div>난이도: <b id="diffName">EASY</b> · 비교 기준값: <b id="diff">2.0</b></div>
+    <div>난이도: <b id="diffName">EASY</b> · 비교 기준값: <b id="diff">2.0</b> · 적 발사 간격 <b>×2.0</b></div>
   </div>
 </div>
 
@@ -292,7 +292,8 @@ const DIFFICULTIES={
   impossible:{name:'IMPOSSIBLE',bulletSpeed:110,spawn:.46,maxShots:13,enemyRate:.55,shotDelay:.05,bossHp:16,bossSpeed:196,bossFireMult:.65,bossActions:7,enemySpeedMult:1.55}
 };
 let difficulty='easy';
-let DIFF=2.0; // 과제 비교용 기준값: 실험에서는 선택 난이도를 고정하고 ENEMY_SPEED만 변경
+let DIFF=2.0; // 적 이동 기준값
+let ENEMY_FIRE_INTERVAL=2.0; // 일반 적 탄환 간격 배율: 최종값 2배
 const STORE='tank_arcade_v5';
 let rng=Math.random,shotRequests=0,shotsFired=0,fireQueue=0,lastCause='',saveNotice='';const random=()=>rng();
 const TANKS={light:{name:'LIGHT',hp:2,speed:330,shot:0.17,damage:1},assault:{name:'ASSAULT',hp:3,speed:270,shot:0.22,damage:1},heavy:{name:'HEAVY',hp:5,speed:205,shot:0.34,damage:2}};
@@ -453,7 +454,7 @@ function fresh(){return {bestSurvival:0,bestScore:0,recent:[],mute:false,reduced
 function validSave(x){
  if(!x||Array.isArray(x)||typeof x!=='object'||!Number.isFinite(x.bestSurvival)||x.bestSurvival<0||x.bestSurvival>30||!Number.isFinite(x.bestScore)||x.bestScore<0)return false;
  if(typeof x.mute!=='boolean'||typeof x.reducedMotion!=='boolean'||!Array.isArray(x.recent)||x.recent.length>20)return false;
- if(!x.recent.every(r=>r&&['survival','duel'].includes(r.mode)&&Object.hasOwn(TANKS,r.tank)&&['SUCCESS','FAILURE'].includes(r.result)&&Number.isFinite(r.time)&&r.time>=0&&r.time<=30&&Number.isFinite(r.score)&&r.score>=0&&Object.hasOwn(DIFFICULTIES,r.level)&&Number.isFinite(r.enemySpeed)&&r.enemySpeed>0&&typeof r.at==='string'&&Number.isFinite(Date.parse(r.at))))return false;
+ if(!x.recent.every(r=>r&&['survival','duel'].includes(r.mode)&&Object.hasOwn(TANKS,r.tank)&&['SUCCESS','FAILURE'].includes(r.result)&&Number.isFinite(r.time)&&r.time>=0&&r.time<=30&&Number.isFinite(r.score)&&r.score>=0&&Object.hasOwn(DIFFICULTIES,r.level)&&Number.isFinite(r.enemySpeed)&&r.enemySpeed>0&&(r.enemyFireInterval===undefined||(Number.isFinite(r.enemyFireInterval)&&r.enemyFireInterval>0&&r.enemyFireInterval<=10))&&typeof r.at==='string'&&Number.isFinite(Date.parse(r.at))))return false;
  for(const obj of [x.qtable,x.aiEpisodes])if(!obj||Array.isArray(obj)||typeof obj!=='object')return false;
  for(const [d,table] of Object.entries(x.qtable)){if(!Object.hasOwn(DIFFICULTIES,d)||!table||Array.isArray(table)||typeof table!=='object')return false;for(const [s,actions] of Object.entries(table)){if(!/^[0-2]_[0-7]_[0-2]$/.test(s)||!actions||Array.isArray(actions)||typeof actions!=='object')return false;for(const [a,v] of Object.entries(actions))if(!BOSS_ACTIONS.includes(a)||!Number.isFinite(v)||Math.abs(v)>10000)return false;}}
  for(const [d,v] of Object.entries(x.aiEpisodes))if(!Object.hasOwn(DIFFICULTIES,d)||!Number.isSafeInteger(v)||v<0)return false;return true;
@@ -464,14 +465,14 @@ function tank(){return TANKS[tankKey]}
 function spawnBoss(){
   const d=DIFFICULTIES[difficulty];
   const sk=BOSS_SKILLS[difficulty];
-  enemies.push({x:W/2,y:H*0.3,w:52,h:38,hp:d.bossHp,maxHp:d.bossHp,speed:d.bossSpeed,vx:0,vy:0,isBoss:true,cool:1.0,decisionCd:0.3,lastState:null,lastAction:null,pendingReward:0,facingAngle:Math.PI,
+  enemies.push({x:W/2,y:H*0.3,w:52,h:38,hp:d.bossHp,maxHp:d.bossHp,speed:d.bossSpeed,vx:0,vy:0,isBoss:true,cool:1.0*ENEMY_FIRE_INTERVAL,decisionCd:0.3,lastState:null,lastAction:null,pendingReward:0,facingAngle:Math.PI,
     skills:sk.list,skillCdBase:sk.cooldown,skillCd:sk.cooldown*(0.6+random()*0.4),skillState:'idle',skillName:null,skillTimer:0,shielded:false});
 }
 function reset(){cancelAnimationFrame(raf);keys.clear();fireQueue=0;shotRequests=0;shotsFired=0;lastCause='';trackPhase=0;shakeTime=0;shakeMag=0;panel.classList.remove('shake');state='READY';const t=tank();hp=t.hp;elapsed=0;score=0;spawn=0;shotCd=0;enemies=[];enemyShots=[];playerShots=[];particles=[];player={x:W/2,y:H-60,w:44,h:34,speed:t.speed,dir:'up'};genBattlefield();if(mode==='duel')spawnBoss();updateHud();draw()}
 function begin(){reset();state='RUNNING';last=performance.now();$('menu').classList.add('hidden');$('result').classList.add('hidden');canvas.focus();raf=requestAnimationFrame(loop)}
-function finish(ok){if(state!=='RUNNING')return;state=ok?'SUCCESS':'FAILURE';elapsed=Math.min(elapsed,DURATION);if(ok&&mode==='survival')elapsed=DURATION;keys.clear();fireQueue=0;const t=Number(elapsed.toFixed(1));prefs.bestSurvival=Math.max(prefs.bestSurvival,mode==='survival'?t:0);prefs.bestScore=Math.max(prefs.bestScore,score);prefs.recent.push({mode,tank:tankKey,result:state,time:t,score,difficulty:DIFF,level:difficulty,enemySpeed:DIFF,cause:lastCause||(ok?'mission-complete':'hit'),at:new Date().toISOString()});prefs.recent=prefs.recent.slice(-20);save();if(!ok&&!prefs.reducedMotion){panel.classList.add('shake');setTimeout(()=>panel.classList.remove('shake'),190)}sfxResult(ok);updateHud();renderRecords();$('resultTitle').textContent=ok?'MISSION COMPLETE':'MISSION FAILED';$('resultTitle').className=ok?'good':'danger';$('resultMsg').textContent=mode==='survival'?(ok?`30초 생존 · ${score}점`:`${t}초 생존 · ${score}점`):(ok?`적 탱크 격파 · ${score}점`:`${lastCause==='timeout'?'30초 임무 시간 종료':'내 탱크 파괴'} · ${score}점`);$('result').classList.remove('hidden');$('again').focus();}
+function finish(ok){if(state!=='RUNNING')return;state=ok?'SUCCESS':'FAILURE';elapsed=Math.min(elapsed,DURATION);if(ok&&mode==='survival')elapsed=DURATION;keys.clear();fireQueue=0;const t=Number(elapsed.toFixed(1));prefs.bestSurvival=Math.max(prefs.bestSurvival,mode==='survival'?t:0);prefs.bestScore=Math.max(prefs.bestScore,score);prefs.recent.push({mode,tank:tankKey,result:state,time:t,score,difficulty:DIFF,level:difficulty,enemySpeed:DIFF,enemyFireInterval:ENEMY_FIRE_INTERVAL,cause:lastCause||(ok?'mission-complete':'hit'),at:new Date().toISOString()});prefs.recent=prefs.recent.slice(-20);save();if(!ok&&!prefs.reducedMotion){panel.classList.add('shake');setTimeout(()=>panel.classList.remove('shake'),190)}sfxResult(ok);updateHud();renderRecords();$('resultTitle').textContent=ok?'MISSION COMPLETE':'MISSION FAILED';$('resultTitle').className=ok?'good':'danger';$('resultMsg').textContent=mode==='survival'?(ok?`30초 생존 · ${score}점`:`${t}초 생존 · ${score}점`):(ok?`적 탱크 격파 · ${score}점`:`${lastCause==='timeout'?'30초 임무 시간 종료':'내 탱크 파괴'} · ${score}점`);$('result').classList.remove('hidden');$('again').focus();}
 function updateHud(){$('hudMode').textContent=mode==='survival'?'SURVIVAL':mode==='duel'?'DUEL':'MENU';$('hudTank').textContent=tank().name;$('hudState').textContent=state;$('hudState').className=state==='RUNNING'?'st-run':state==='SUCCESS'?'st-ok':state==='FAILURE'?'st-bad':state==='PAUSED'?'st-pause':'';$('hudHp').textContent=hp;$('hudScore').textContent=score;$('hudTime').textContent=elapsed.toFixed(1);$('hudAI').textContent=prefs.aiEpisodes[difficulty]||0;const p=$('pause');if(p){p.disabled=!['RUNNING','PAUSED'].includes(state);p.textContent=state==='PAUSED'?'계속하기':'일시정지'};if($('fireStatus'))$('fireStatus').textContent=`발사 입력 ${shotRequests} · 발사 ${shotsFired} · 대기 ${fireQueue}`}
-function renderRecords(){const body=$('records');if(!prefs.recent.length){body.innerHTML='<tr><td colspan="8" class="empty">아직 완료된 플레이 기록이 없습니다.</td></tr>';return}body.innerHTML=prefs.recent.slice().reverse().map((r,i)=>{const ok=r.result==='SUCCESS';const d=new Date(r.at);return `<tr><td>${prefs.recent.length-i}</td><td>${r.mode==='survival'?'SURVIVAL':'DUEL'}</td><td>${TANKS[r.tank]?.name||'—'}</td><td class="${ok?'good':'danger'}">${ok?'SUCCESS':'FAILURE'}</td><td>${Number(r.time).toFixed(1)}s</td><td>${Number(r.score)||0}</td><td>${r.level.toUpperCase()} / ${Number(r.enemySpeed).toFixed(1)}</td><td>${isNaN(d)?'—':d.toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</td></tr>`}).join('')}
+function renderRecords(){const body=$('records');if(!prefs.recent.length){body.innerHTML='<tr><td colspan="8" class="empty">아직 완료된 플레이 기록이 없습니다.</td></tr>';return}body.innerHTML=prefs.recent.slice().reverse().map((r,i)=>{const ok=r.result==='SUCCESS';const d=new Date(r.at);return `<tr><td>${prefs.recent.length-i}</td><td>${r.mode==='survival'?'SURVIVAL':'DUEL'}</td><td>${TANKS[r.tank]?.name||'—'}</td><td class="${ok?'good':'danger'}">${ok?'SUCCESS':'FAILURE'}</td><td>${Number(r.time).toFixed(1)}s</td><td>${Number(r.score)||0}</td><td>${r.level.toUpperCase()} / ${Number(r.enemySpeed).toFixed(1)} · 발사 간격 ×${Number(r.enemyFireInterval??1).toFixed(1)}</td><td>${isNaN(d)?'—':d.toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</td></tr>`}).join('')}
 function circleRect(c,r){return Math.abs(c.x-r.x)<r.w/2+c.r&&Math.abs(c.y-r.y)<r.h/2+c.r}
 function muzzleFlash(x,y,dir){if(prefs.reducedMotion)return;const d=DIRS[dir]||DIRS.up;for(let i=0;i<6;i++){const a=d.angle-Math.PI/2+(random()-0.5)*1.2,s=60+random()*140;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.12,spark:true})}}
 function fire(){if(state!=='RUNNING')return;shotRequests++;fireQueue++;updateHud()}
@@ -485,7 +486,7 @@ function spawnEnemy(){
   else if(side===1){x=W+margin;y=60+random()*(H-120);vx=-1;vy=0;dir='left'}
   else if(side===2){x=60+random()*(W-120);y=H+margin;vx=0;vy=-1;dir='up'}
   else{x=-margin;y=60+random()*(H-120);vx=1;vy=0;dir='right'}
-  enemies.push({x,y,w:44,h:32,hp:1,cool:d.enemyRate*(.75+random()*.5),speed:DIFF*28*d.enemySpeedMult*(.9+random()*.25),vx,vy,dir});
+  enemies.push({x,y,w:44,h:32,hp:1,cool:d.enemyRate*(.75+random()*.5)*ENEMY_FIRE_INTERVAL,speed:DIFF*28*d.enemySpeedMult*(.9+random()*.25),vx,vy,dir});
 }
 function burst(x,y,n=8){if(prefs.reducedMotion)return;for(let i=0;i<n;i++){const a=random()*Math.PI*2,s=30+random()*90;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.35+random()*.2})}}
 function explode(x,y,big){
@@ -542,7 +543,7 @@ function update(dt){
       if(e.burst.timer<=0){
         const a=e.burst.queue.shift();
         enemyShots.push({x:e.x+Math.cos(a)*20,y:e.y+Math.sin(a)*20,vx:Math.cos(a)*d.bulletSpeed*2.0,vy:Math.sin(a)*d.bulletSpeed*2.0,r:7,damage:1,dir:a,owner:e});
-        e.burst.timer=d.shotDelay*(e.isBoss?d.bossFireMult:1);
+        e.burst.timer=d.shotDelay*(e.isBoss?d.bossFireMult:1)*ENEMY_FIRE_INTERVAL;
       }
     }
     if(e.isBoss&&(e.skillState==='charging'||e.skillState==='dashing')){continue}
@@ -556,7 +557,7 @@ function update(dt){
         angles.push(base+spread);
       }
       e.burst={queue:angles,timer:0};
-      e.cool=e.isBoss?d.enemyRate*d.bossFireMult*(.85+random()*.3):d.enemyRate*(.9+random()*.35);
+      e.cool=(e.isBoss?d.enemyRate*d.bossFireMult*(.85+random()*.3):d.enemyRate*(.9+random()*.35))*ENEMY_FIRE_INTERVAL;
     }
   }
 
@@ -927,7 +928,7 @@ prefs=load();$('saveStatus').textContent=saveNotice;$('mute').setAttribute('aria
 $('diff').textContent=DIFF.toFixed(1);$('diffName').textContent=DIFFICULTIES[difficulty].name;reset();renderRecords();renderTankIcons();
 
 if(['localhost','127.0.0.1'].includes(location.hostname)&&new URLSearchParams(location.search).has('lab')){
-window.TankLab={snapshot:()=>({state,hp,elapsed,score,shotRequests,shotsFired,fireQueue,player:{...player},enemyShots:enemyShots.length,keys:[...keys],prefs:structuredClone(prefs),cause:lastCause}),configure:(speed,seed)=>{mode='survival';tankKey='assault';difficulty='normal';DIFF=speed;let n=seed>>>0;rng=()=>{n=(1664525*n+1013904223)>>>0;return n/4294967296};prefs.mute=true;prefs.reducedMotion=true;reset()},step:dt=>{update(dt);draw()},begin,reset,pause:pauseGame,fire,load,validSave,save,setMute,setMotion,run:()=>{reset();state='RUNNING'},inject:kind=>{if(kind==='failure'){enemyShots.push({x:player.x,y:player.y,vx:0,vy:0,r:7,damage:1});hp=1}else if(kind==='success'){elapsed=29.99}},input:k=>{window.dispatchEvent(new KeyboardEvent('keydown',{key:k,bubbles:true}));window.dispatchEvent(new KeyboardEvent('keyup',{key:k,bubbles:true}))},bot:()=>{keys.clear();keys.add(['d','w','a','s'][Math.floor(elapsed/3)%4]);if(shotCd===0&&fireQueue===0)fire()},stop:()=>{cancelAnimationFrame(raf);keys.clear();state='READY'},storage:raw=>{localStorage.setItem(STORE,raw);prefs=load();reset()},store:STORE};
+window.TankLab={snapshot:()=>({state,hp,elapsed,score,shotRequests,shotsFired,fireQueue,player:{...player},enemyShots:enemyShots.length,keys:[...keys],prefs:structuredClone(prefs),cause:lastCause,enemyFireInterval:ENEMY_FIRE_INTERVAL}),configure:(speed,seed,fireInterval=2)=>{mode='survival';tankKey='assault';difficulty='normal';DIFF=speed;ENEMY_FIRE_INTERVAL=fireInterval;let n=seed>>>0;rng=()=>{n=(1664525*n+1013904223)>>>0;return n/4294967296};prefs.mute=true;prefs.reducedMotion=true;reset()},step:dt=>{update(dt);draw()},begin,reset,pause:pauseGame,fire,load,validSave,save,setMute,setMotion,run:()=>{reset();state='RUNNING'},inject:kind=>{if(kind==='failure'){enemyShots.push({x:player.x,y:player.y,vx:0,vy:0,r:7,damage:1});hp=1}else if(kind==='success'){elapsed=29.99}},input:k=>{window.dispatchEvent(new KeyboardEvent('keydown',{key:k,bubbles:true}));window.dispatchEvent(new KeyboardEvent('keyup',{key:k,bubbles:true}))},bot:()=>{keys.clear();keys.add(['d','w','a','s'][Math.floor(elapsed/3)%4]);if(shotCd===0&&fireQueue===0)fire()},stop:()=>{cancelAnimationFrame(raf);keys.clear();state='READY'},storage:raw=>{localStorage.setItem(STORE,raw);prefs=load();reset()},store:STORE};
 }
 </script></body></html>
 

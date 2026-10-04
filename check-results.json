@@ -62,7 +62,8 @@
     "inputWorks": true,
     "endState": "RUNNING",
     "endHp": 3,
-    "consoleErrors": 0
+    "consoleErrors": 0,
+    "version": "before fire interval feedback"
   },
   "secretPatternScan": {
     "files": 9,
@@ -89,5 +90,17 @@
     "restartFireRequests": 0,
     "reloadedRecordCount": 1,
     "incognito": "User confirmed both URLs open without login"
+  },
+  "fireIntervalComparison": {
+    "fixedEnemySpeed": 2,
+    "beforeInterval": 1,
+    "afterInterval": 2,
+    "beforeMedian": 6.775,
+    "afterMedian": 13.1335,
+    "improvedPairedTrials": 9,
+    "beforeFailures": 10,
+    "afterFailures": 10,
+    "source": "fire-interval-plays.csv",
+    "finalInterval": 2
   }
 }
