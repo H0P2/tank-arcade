@@ -66,7 +66,7 @@
     "version": "before fire interval feedback"
   },
   "secretPatternScan": {
-    "files": 9,
+    "files": 11,
     "findings": 0
   },
   "limitations": [
@@ -89,7 +89,10 @@
     "restartScore": 0,
     "restartFireRequests": 0,
     "reloadedRecordCount": 1,
-    "incognito": "User confirmed both URLs open without login"
+    "incognito": "User confirmed both URLs open without login",
+    "bossFailureSeconds": 13.4,
+    "bossRestartHp": 5,
+    "bossRestartRequests": 0
   },
   "fireIntervalComparison": {
     "fixedEnemySpeed": 2,
@@ -102,5 +105,25 @@
     "afterFailures": 10,
     "source": "fire-interval-plays.csv",
     "finalInterval": 2
+  },
+  "soakAfterFireInterval": {
+    "startedAt": "2026-10-04T04:14:54.581Z",
+    "finishedAt": "2026-10-04T04:24:54.587Z",
+    "elapsedSeconds": 600.01,
+    "completedRounds": 58,
+    "inputWorks": true,
+    "endState": "RUNNING",
+    "endHp": 3,
+    "endGameTime": 2.4989000000000265,
+    "enemyFireInterval": 2,
+    "shotRequests": 8,
+    "shotsFired": 6,
+    "queuedShots": 2,
+    "consoleErrors": 0
+  },
+  "boundaryAfterFireInterval": {
+    "passed": 14,
+    "total": 14,
+    "errors": 0
   }
 }
