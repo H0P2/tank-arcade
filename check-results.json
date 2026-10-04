@@ -1,0 +1,11 @@
+{
+  "testedAt": "2026-10-04",
+  "method": "Actual browser game engine; automated input, not human play",
+  "boundary": {"passed":14,"total":14,"burstMilliseconds":0.5,"inputRequests":10,"shotsExecuted":10,"pauseUpdateCalls":120,"successRestart":true,"failureRestart":true,"normalSave":true,"emptyAndCorruptRecovery":true},
+  "viewports": [{"width":1366,"height":768,"horizontalOverflow":0,"gameClipped":false,"startClipped":false,"fireClipped":false},{"width":1920,"height":1080,"horizontalOverflow":0,"gameClipped":false,"startClipped":false,"fireClipped":false}],
+  "resizeAndFocus": {"pausedBefore":{"hp":3,"score":0,"time":0.2},"pausedAfter":{"hp":3,"score":0,"time":0.2},"resumeFire":{"requests":1,"shots":1,"queued":0},"focusLoss":"PAUSED"},
+  "reconnect": {"recentRecords":20,"mute":true,"reducedMotion":true},
+  "soak": {"startedAt":"2026-10-04T03:46:38.353Z","finishedAt":"2026-10-04T03:56:38.366Z","elapsedSeconds":600.01,"completedRounds":98,"inputWorks":true,"endState":"RUNNING","endHp":3,"consoleErrors":0},
+  "secretPatternScan": {"files":7,"findings":0},
+  "limitations": ["Viewport checks use actual game iframe viewport sizes.","Difficulty comparison uses accelerated fixed-step automated play; see plays.csv.","Terminal boundary tests inject end conditions; the 20 comparison runs do not.","Public incognito access requires separate deployment verification."]
+}
